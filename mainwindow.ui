@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>817</width>
+    <height>608</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QSplitter" name="window_splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <widget class="QSplitter" name="plot_splitter">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <widget class="KPlotWidget" name="plot_current">
+        <property name="grid" stdset="0">
+         <bool>true</bool>
+        </property>
+       </widget>
+       <widget class="KPlotWidget" name="plot_sum">
+        <property name="grid" stdset="0">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="verticalLayoutWidget">
+       <layout class="QVBoxLayout" name="settings_layout">
+        <item>
+         <widget class="QGroupBox" name="mode_group">
+          <property name="minimumSize">
+           <size>
+            <width>0</width>
+            <height>0</height>
+           </size>
+          </property>
+          <property name="styleSheet">
+           <string notr="true"> QGroupBox {
+     border: 2px solid gray;
+     margin-top: 1ex;
+ }
+
+ QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top center;
+     padding: 0 3px;
+ }</string>
+          </property>
+          <property name="title">
+           <string>Mode</string>
+          </property>
+          <property name="flat">
+           <bool>false</bool>
+          </property>
+          <property name="checkable">
+           <bool>false</bool>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QRadioButton" name="mode_interval">
+             <property name="text">
+              <string>Interval</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QRadioButton" name="mode_gradient">
+             <property name="text">
+              <string>Gradient</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+          <zorder>mode_gradient</zorder>
+          <zorder>mode_gradient</zorder>
+          <zorder>mode_interval</zorder>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="intervalSettings_group">
+          <property name="styleSheet">
+           <string notr="true"> QGroupBox {
+     border: 2px solid gray;
+     margin-top: 1ex;
+ }
+
+ QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top center;
+     padding: 0 3px;
+ }</string>
+          </property>
+          <property name="title">
+           <string>Interval settings</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <layout class="QHBoxLayout" name="intervalSettings_integrateLayout">
+             <item>
+              <widget class="QLabel" name="_integration">
+               <property name="text">
+                <string>Integration [samples]:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="intervalSettings_integrate">
+               <property name="text">
+                <string>10</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="intervalSettings_lengthLayout">
+             <item>
+              <widget class="QLabel" name="_length">
+               <property name="text">
+                <string>Length [s]:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="intervalSettings_length">
+               <property name="text">
+                <string>0.5</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="gradientSettings_group">
+          <property name="styleSheet">
+           <string notr="true"> QGroupBox {
+     border: 2px solid gray;
+     margin-top: 1ex;
+ }
+
+ QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top center;
+     padding: 0 3px;
+ }</string>
+          </property>
+          <property name="title">
+           <string>Gradient settings</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_6">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_5">
+             <item>
+              <widget class="QLabel" name="_integration_g">
+               <property name="text">
+                <string>Integration [s]:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="gradientSettings_integrate">
+               <property name="text">
+                <string>0.5</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="previoew_grpip">
+          <property name="styleSheet">
+           <string notr="true"> QGroupBox {
+     border: 2px solid gray;
+     margin-top: 1ex;
+ }
+
+ QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top center;
+     padding: 0 3px;
+ }</string>
+          </property>
+          <property name="title">
+           <string>Auto preview</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QLabel" name="_every">
+               <property name="text">
+                <string>every [s]</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="preview_repeatInterval">
+               <property name="text">
+                <string>2.0</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="prewiew_now">
+          <property name="text">
+           <string>Preview now</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="record_group">
+          <property name="styleSheet">
+           <string notr="true"> QGroupBox {
+     border: 2px solid gray;
+     margin-top: 1ex;
+ }
+
+ QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top center;
+     padding: 0 3px;
+ }</string>
+          </property>
+          <property name="title">
+           <string>Recording</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="KUrlComboRequester" name="record_url">
+             <property name="mode">
+              <set>KFile::Directory|KFile::ExistingOnly|KFile::LocalOnly</set>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <item>
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>Prefix:</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLineEdit" name="lineEdit">
+               <property name="text">
+                <string>data_</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QPushButton" name="record_startstop">
+             <property name="text">
+              <string>Record</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>817</width>
+     <height>26</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionQuit"/>
+   </widget>
+   <addaction name="menuFile"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>KUrlRequester</class>
+   <extends>QFrame</extends>
+   <header>kurlrequester.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KPlotWidget</class>
+   <extends>QFrame</extends>
+   <header>kplotwidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>KUrlComboRequester</class>
+   <extends>KUrlRequester</extends>
+   <header>kurlrequester.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>actionQuit</sender>
+   <signal>activated()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>408</x>
+     <y>303</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>mode_gradient</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>intervalSettings_group</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>740</x>
+     <y>91</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>740</x>
+     <y>147</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>mode_interval</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>gradientSettings_group</receiver>
+   <slot>setHidden(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>740</x>
+     <y>64</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>712</x>
+     <y>244</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
