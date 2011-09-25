@@ -3,6 +3,7 @@ import wave
 import sys
 from struct import unpack, pack
 from array import array
+from numpy import array as narray
 from time import time, sleep
 from math import floor
 import mainwindow
@@ -18,7 +19,7 @@ def unpackData(data):
     return unpack('<' + ('h'*(len(data)/2)), data)
 
 def partitionData(data, length, integrationInterval = 1):
-    blockSize = int(self.rate * length / integrationInterval)
+    blockSize = int(SAMPLE_RATE * length / integrationInterval)
     print "Partitioning data into blocks of", blockSize, "frames"
     size = len(data)
     atFrame = 0
@@ -35,10 +36,7 @@ def integrateData(data, samples):
     return newData
 
 def addRegisteredBlocks(blocks):
-    result = []
-    for frameIndex in range(len(blocks[0])):
-        result.append(sum([block[frameIndex] for block in blocks]))
-    return result
+    return sum([narray(block)**2 for block in blocks])
 
 def writeArrayToDatafile(data, filename):
     print "Writing datafile %s" % filename
@@ -62,6 +60,10 @@ class Recorder(QThread):
     def cleanup(self):
         self.data = ""
     
+    def finalize(self):
+        self.data = ""
+        self.stream.close()
+    
     def run(self):
         """Record a chunk of "length" seconds, and return it as int array"""
         length = self.length
@@ -81,11 +83,22 @@ def verify(conversionResult, defaultValue = 0, error = False, parent = False):
 
 class DataProcessor(QThread):
     def run(self):
-        self.data = unpackData(self.data)
-        self.integrationInterval = 1 if self.integrationInterval < 1 else self.integrationInterval
-        self.data = integrateData(self.data, self.integrationInterval)
-        if self.save:
-            writeArrayToDatafile(self.data, self.filename)
+        t0 = time()
+        if self.mode == 'unpack_and_integrate':
+            try:
+                self.data = unpackData(self.data)
+                self.integrationInterval = 1 if self.integrationInterval < 1 else self.integrationInterval
+                self.data = integrateData(self.data, self.integrationInterval)
+                if self.save:
+                    writeArrayToDatafile(self.data, self.filename)
+            except OverflowError:
+                print "!! overflow while processing data, not saving"
+                self.data = False
+        if self.mode == 'partition_and_add':
+            self.data = addRegisteredBlocks(self.data)
+            if self.save:
+                writeArrayToDatafile(self.data, self.filename)
+        print "Time taken for data processing:", time() - t0
 
 class PreviewGenerator(QThread):
     def __init__(self):
@@ -94,18 +107,22 @@ class PreviewGenerator(QThread):
         self.plotobjects = []
         
     def run(self):
+        t0 = time()
         index = 0
-        self.plotobject = KPlotObject(QColor(50, 0, 220), KPlotObject.Lines, 1)
+        self.plotobject = KPlotObject(self.color, KPlotObject.Lines, 1)
         for point in self.data:
             self.plotobject.addPoint(index, point)
             index += 1
         self.bounds = (0, len(self.data), min(self.data), max(self.data))
         self.plotobjects.append(self.plotobject)
+        if len(self.plotobjects) > 3:
+            self.plotobjects.pop()
         if len(self.widget.plotObjects()):
             self.widget.replacePlotObject(0, self.plotobject)
         else:
             self.widget.addPlotObject(self.plotobject)
         self.widget.setLimits(*self.bounds)
+        print "Time taken for preview generation:", time() - t0
 
 class mainwin(QMainWindow):
     def __init__(self):
@@ -118,72 +135,151 @@ class mainwin(QMainWindow):
         self.ui.intervalSettings_length.textChanged.connect(self.updateRecordingInterval)
         self.ui.preview_group.toggled.connect(self.toggleAutoUpdate)
         self.ui.preview_now.clicked.connect(self.refreshPreview)
+        self.ui.mode_group.clicked.connect(self.toggleOperationMode)
+        self.ui.mode_group.toggled.connect(self.toggleDataAcquisition)
+        self.toggleOperationMode()
         self.dataQueue = False
         self.startRecording()
         self.previewTimer = QTimer()
-        self.previewTimer.setInterval(self.ui.preview_repeatInterval.text().toFloat()[0] * 1000)
+        self.previewTimer.setInterval(verify(self.ui.preview_repeatInterval.text().toFloat(), 2.0, "preview interval", self) * 1000)
         self.previewTimer.timeout.connect(self.refreshPreview)
         self.previewTimer.start()
+        self.resultRegnerationTimer = QTimer()
+        self.resultRegnerationTimer.setInterval(verify(self.ui.preview_repeatInterval.text().toFloat(), 2.0, "preview interval", self) * 5000)
+        self.resultRegnerationTimer.timeout.connect(self.regenerateAndDisplayResult)
+        self.resultRegnerationTimer.start()
+        self.ui.control_clear.clicked.connect(self.clearData)
         self.chunkIndex = 0
         self.dataAccessMutex = QMutex()
         self.dataProcessor = DataProcessor()
         self.currentPreviewGenerator = PreviewGenerator()
         self.totalPreviewGenerator = PreviewGenerator()
+        self.resultRegenerationWorker = DataProcessor()
+        self.data = []
+        self.abortRecording = False
+    
+    def toggleDataAcquisition(self):
+        if not self.ui.mode_group.isChecked():
+            self.abortRecording = True
+        elif self.abortRecording:
+                self.startRecording()
+                self.abortRecording = False
+    
+    def clearData(self):
+        self.data = []
+        self.ui.plot_current.resetPlot()
+        self.ui.plot_sum.resetPlot()
+    
+    def toggleOperationMode(self):
+        print "setting new operation mode:",
+        if self.ui.mode_gradient.isChecked():
+            self.mode = 'gradient'
+        else:
+            self.mode = 'interval'
+        print self.mode
     
     def toggleAutoUpdate(self):
         if self.ui.preview_group.isChecked():
             if not self.previewTimer.isActive():
                 self.updateRecordingInterval()
                 self.previewTimer.start()
+                self.resultRegnerationTimer.start()
         else:
             if self.previewTimer.isActive():
                 self.previewTimer.stop()
+                self.resultRegnerationTimer.stop()
+    
+    def length(self):
+        return verify(self.ui.intervalSettings_length.text().toFloat(), 0.5, "recording interval", self)
+    
+    def integrationInterval(self):
+        return verify(self.ui.intervalSettings_integrate.text().toInt(), 1, "integration interval", self)
     
     def updateRecordingInterval(self):
-        self.recorderThread.length = verify(self.ui.intervalSettings_length.text().toFloat(), 0.5, "recording interval", self)
+        self.recorderThread.length = self.length()
+    
+    def regenerateAndDisplayResult(self):
+        if not self.resultRegenerationWorker.isRunning():
+            self.resultRegenerationWorker.mode = 'partition_and_add'
+            self.resultRegenerationWorker.integrationInterval = self.integrationInterval()
+            self.resultRegenerationWorker.length = self.length()
+            targetPath = self.targetPath()
+            if targetPath:
+                self.resultRegenerationWorker.filename = targetPath + "result"
+                self.resultRegenerationWorker.save = self.ui.record_startstop.isChecked()
+            else:
+                self.resultRegenerationWorker.save = False
+            self.dataAccessMutex.lock()
+            self.resultRegenerationWorker.data = self.data
+            self.dataAccessMutex.unlock()
+            self.resultRegenerationWorker.start()
+            self.resultRegenerationWorker.finished.connect(self.displayResult)
+    
+    def displayResult(self):
+        if not self.totalPreviewGenerator.isRunning() and len(self.data):
+            self.dataAccessMutex.lock()
+            self.totalPreviewGenerator.data = self.resultRegenerationWorker.data
+            self.totalPreviewGenerator.color = QColor(255, 200, 44)
+            self.dataAccessMutex.unlock()
+            self.totalPreviewGenerator.widget = self.ui.plot_sum
+            self.totalPreviewGenerator.start()
     
     def startRecording(self):
-        length = self.ui.intervalSettings_length.text().toFloat()
-        if length[1]:
-            length = length[0]
-        else:
-            print "invalid length"
-            self.ui.statusbar.message("Invalid interval format")
-            length = 0.5
-        self.recorderThread = Recorder(length)
+        self.recorderThread = Recorder(self.length())
         self.recorderThread.start(QThread.TimeCriticalPriority)
         self.recorderThread.finished.connect(self.handleRecordFinished)
     
     def refreshPreview(self):
-        if not self.currentPreviewGenerator.isRunning():
+        if not self.currentPreviewGenerator.isRunning() and len(self.data):
             self.dataAccessMutex.lock()
-            self.currentPreviewGenerator.data = self.lastChunk
+            self.currentPreviewGenerator.data = self.data[-1]
             self.dataAccessMutex.unlock()
             self.currentPreviewGenerator.widget = self.ui.plot_current
+            self.currentPreviewGenerator.color = QColor(61, 204, 255)
             self.currentPreviewGenerator.start()
     
     def handleProcessedData(self):
         self.dataAccessMutex.lock()
-        self.lastChunk = self.dataProcessor.data
+        if self.dataProcessor.data:
+            self.data.append(self.dataProcessor.data)
         self.dataAccessMutex.unlock()
     
+    def targetPath(self):
+        url = self.ui.record_url.url()
+        targetPath = False
+        if url.isValid():
+            targetPath = url.path() + "/" + self.ui.record_prefix.text()
+        return targetPath
+        
+    
     def handleQueuedData(self):
-        print "processing data queue"
         self.dataAccessMutex.lock()
         self.dataProcessor.data = self.dataQueue
-        self.dataProcessor.save = not self.ui.record_startstop.isEnabled()
-        self.dataProcessor.integrationInterval = self.ui.intervalSettings_integrate.text().toInt()[0]
-        filenameForChunk = self.ui.record_url.url().path() + "/" + self.ui.record_prefix.text() + "%04i" % self.chunkIndex
-        self.dataProcessor.filename = filenameForChunk
+        self.dataAccessMutex.unlock()
+        self.dataProcessor.mode = 'unpack_and_integrate'
+        self.dataProcessor.integrationInterval = self.integrationInterval()
+        targetPath = self.targetPath()
+        if targetPath:
+            filenameForChunk = targetPath + "%04i" % self.chunkIndex
+            self.dataProcessor.save = self.ui.record_startstop.isChecked()
+            self.dataProcessor.filename = filenameForChunk
+            if self.dataProcessor.save:
+                self.mainwin.ui.statusbar.message("About to write datafile \"%s\"" % filenameForChunk)
+                self.chunkIndex += 1
+        else:
+            self.dataProcessor.save = False
+            self.ui.statusbar.message("Invalid save file path, not saving data!")
         self.dataProcessor.finished.connect(self.handleProcessedData)
         self.dataProcessor.start()
-        self.dataAccessMutex.unlock()
     
     def handleRecordFinished(self):
         data = self.recorderThread.data
         
-        self.recorderThread.cleanup()
-        self.recorderThread.start(QThread.TimeCriticalPriority)
+        if not self.abortRecording:
+            self.recorderThread.cleanup()
+            self.recorderThread.start(QThread.TimeCriticalPriority)
+        else:
+            self.recorderThread.finalize()
         
         self.dataAccessMutex.lock()
         self.dataQueue = data
