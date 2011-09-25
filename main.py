@@ -9,7 +9,7 @@ from math import floor
 import mainwindow
 
 from PyQt4.QtGui import QMainWindow, QApplication, QColor
-from PyQt4.QtCore import QThread, QTimer, QMutex
+from PyQt4.QtCore import QThread, QTimer, QMutex, pyqtSignal
 from PyKDE4.kio import KFile
 from PyKDE4.kdeui import KPlotWidget, KPlotObject
 
@@ -45,6 +45,8 @@ def writeArrayToDatafile(data, filename):
             fileptr.write(str(item) + "\n")
 
 class Recorder(QThread):
+    dataAvailable = pyqtSignal()
+    
     def __init__(self, length):
         super(Recorder, self).__init__()
         self.chunkSize = 1024
@@ -52,23 +54,27 @@ class Recorder(QThread):
         self.channels = 1
         self.rate = SAMPLE_RATE
         self.length = length
-        self.data = ""
+        self.data = []
         self.stream = ossaudiodev.open('r')
         self.stream.setfmt(self.format)
         self.stream.speed(self.rate)
+        self.stop = False
     
     def cleanup(self):
-        self.data = ""
+        self.data = []
     
     def finalize(self):
-        self.data = ""
+        self.cleanup()
         self.stream.close()
     
     def run(self):
         """Record a chunk of "length" seconds, and return it as int array"""
-        length = self.length
-        print "Recording block of length", length
-        self.data = self.stream.read(int(length * self.rate + 1) * 2) # 1*2 = sizeof(short)
+        while not self.stop:
+            length = self.length
+            print "Recording block of length", length
+            self.data.append(self.stream.read(int(length * self.rate + 1) * 2)) # 1*2 = sizeof(short)
+            self.dataAvailable.emit()
+        self.finalize()
         return
     
     def __del__(self):
@@ -227,7 +233,7 @@ class mainwin(QMainWindow):
     def startRecording(self):
         self.recorderThread = Recorder(self.length())
         self.recorderThread.start(QThread.TimeCriticalPriority)
-        self.recorderThread.finished.connect(self.handleRecordFinished)
+        self.recorderThread.dataAvailable.connect(self.handleRecordFinished)
     
     def refreshPreview(self):
         if not self.currentPreviewGenerator.isRunning() and len(self.data):
@@ -250,7 +256,6 @@ class mainwin(QMainWindow):
         if url.isValid():
             targetPath = url.path() + "/" + self.ui.record_prefix.text()
         return targetPath
-        
     
     def handleQueuedData(self):
         self.dataAccessMutex.lock()
@@ -264,7 +269,7 @@ class mainwin(QMainWindow):
             self.dataProcessor.save = self.ui.record_startstop.isChecked()
             self.dataProcessor.filename = filenameForChunk
             if self.dataProcessor.save:
-                self.mainwin.ui.statusbar.message("About to write datafile \"%s\"" % filenameForChunk)
+                self.ui.statusbar.message("About to write datafile \"%s\"" % filenameForChunk)
                 self.chunkIndex += 1
         else:
             self.dataProcessor.save = False
@@ -273,13 +278,10 @@ class mainwin(QMainWindow):
         self.dataProcessor.start()
     
     def handleRecordFinished(self):
-        data = self.recorderThread.data
+        data = self.recorderThread.data.pop()
         
-        if not self.abortRecording:
-            self.recorderThread.cleanup()
-            self.recorderThread.start(QThread.TimeCriticalPriority)
-        else:
-            self.recorderThread.finalize()
+        if self.abortRecording:
+            self.recorderThread.stop = True
         
         self.dataAccessMutex.lock()
         self.dataQueue = data
