@@ -187,7 +187,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QGroupBox" name="previoew_grpip">
+         <widget class="QGroupBox" name="preview_group">
           <property name="styleSheet">
            <string notr="true"> QGroupBox {
      border: 2px solid gray;
@@ -229,7 +229,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QPushButton" name="prewiew_now">
+         <widget class="QPushButton" name="preview_now">
           <property name="text">
            <string>Preview now</string>
           </property>
@@ -254,11 +254,7 @@
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <item>
-            <widget class="KUrlComboRequester" name="record_url">
-             <property name="mode">
-              <set>KFile::Directory|KFile::ExistingOnly|KFile::LocalOnly</set>
-             </property>
-            </widget>
+            <widget class="KUrlComboRequester" name="record_url"/>
            </item>
            <item>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -270,7 +266,7 @@
               </widget>
              </item>
              <item>
-              <widget class="QLineEdit" name="lineEdit">
+              <widget class="QLineEdit" name="record_prefix">
                <property name="text">
                 <string>data_</string>
                </property>
