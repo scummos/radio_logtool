@@ -24,48 +24,22 @@
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
-       <widget class="KPlotWidget" name="plot_current">
-        <property name="backgroundColor">
-         <color>
-          <red>45</red>
-          <green>45</green>
-          <blue>45</blue>
-         </color>
-        </property>
-        <property name="foregroundColor">
-         <color>
-          <red>199</red>
-          <green>199</green>
-          <blue>199</blue>
-         </color>
-        </property>
-        <property name="gridColor">
-         <color>
-          <red>121</red>
-          <green>121</green>
-          <blue>121</blue>
-         </color>
-        </property>
-        <property name="grid" stdset="0">
-         <bool>true</bool>
-        </property>
-       </widget>
        <widget class="KPlotWidget" name="plot_sum">
-        <property name="backgroundColor">
+        <property name="backgroundColor" stdset="0">
          <color>
           <red>45</red>
           <green>45</green>
           <blue>45</blue>
          </color>
         </property>
-        <property name="foregroundColor">
+        <property name="foregroundColor" stdset="0">
          <color>
           <red>199</red>
           <green>199</green>
           <blue>199</blue>
          </color>
         </property>
-        <property name="gridColor">
+        <property name="gridColor" stdset="0">
          <color>
           <red>121</red>
           <green>121</green>
@@ -122,7 +96,7 @@ p, li { white-space: pre-wrap; }
               <string>Interval</string>
              </property>
              <property name="checked">
-              <bool>true</bool>
+              <bool>false</bool>
              </property>
             </widget>
            </item>
@@ -134,69 +108,14 @@ p, li { white-space: pre-wrap; }
              <property name="text">
               <string>Gradient</string>
              </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
             </widget>
            </item>
           </layout>
           <zorder>mode_gradient</zorder>
-          <zorder>mode_gradient</zorder>
           <zorder>mode_interval</zorder>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="intervalSettings_group">
-          <property name="styleSheet">
-           <string notr="true"> QGroupBox {
-     border: 2px solid gray;
-     margin-top: 1ex;
- }
-
- QGroupBox::title {
-     subcontrol-origin: margin;
-     subcontrol-position: top center;
-     padding: 0 3px;
- }</string>
-          </property>
-          <property name="title">
-           <string>Interval settings</string>
-          </property>
-          <layout class="QVBoxLayout" name="verticalLayout_5">
-           <item>
-            <layout class="QHBoxLayout" name="intervalSettings_integrateLayout">
-             <item>
-              <widget class="QLabel" name="_integration">
-               <property name="text">
-                <string>Integration [samples]:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="intervalSettings_integrate">
-               <property name="text">
-                <string>10</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item>
-            <layout class="QHBoxLayout" name="intervalSettings_lengthLayout">
-             <item>
-              <widget class="QLabel" name="_length">
-               <property name="text">
-                <string>Length [s]:</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="intervalSettings_length">
-               <property name="text">
-                <string>0.5</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
          </widget>
         </item>
         <item>
@@ -222,14 +141,14 @@ p, li { white-space: pre-wrap; }
              <item>
               <widget class="QLabel" name="_integration_g">
                <property name="text">
-                <string>Integration [s]:</string>
+                <string>Integration [samples]:</string>
                </property>
               </widget>
              </item>
              <item>
               <widget class="QLineEdit" name="gradientSettings_integrate">
                <property name="text">
-                <string>0.5</string>
+                <string>1</string>
                </property>
               </widget>
              </item>
@@ -371,7 +290,7 @@ p, li { white-space: pre-wrap; }
      <x>0</x>
      <y>0</y>
      <width>817</width>
-     <height>26</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -380,12 +299,24 @@ p, li { white-space: pre-wrap; }
     </property>
     <addaction name="actionQuit"/>
    </widget>
+   <widget class="QMenu" name="menuData">
+    <property name="title">
+     <string>Data</string>
+    </property>
+    <addaction name="actionSave_displayed"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuData"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionQuit">
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionSave_displayed">
+   <property name="text">
+    <string>Save displayed...</string>
    </property>
   </action>
  </widget>
@@ -394,16 +325,19 @@ p, li { white-space: pre-wrap; }
    <class>KUrlRequester</class>
    <extends>QFrame</extends>
    <header>kurlrequester.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>KPlotWidget</class>
    <extends>QFrame</extends>
    <header>kplotwidget.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>KUrlComboRequester</class>
    <extends>KUrlRequester</extends>
    <header>kurlrequester.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>
@@ -421,22 +355,6 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>408</x>
      <y>303</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>mode_gradient</sender>
-   <signal>toggled(bool)</signal>
-   <receiver>intervalSettings_group</receiver>
-   <slot>setHidden(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>740</x>
-     <y>91</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>740</x>
-     <y>147</y>
     </hint>
    </hints>
   </connection>
