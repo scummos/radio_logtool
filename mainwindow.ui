@@ -113,13 +113,27 @@ p, li { white-space: pre-wrap; }
              </property>
             </widget>
            </item>
+           <item>
+            <widget class="QCheckBox" name="invertSignalCheckbox">
+             <property name="text">
+              <string>Invert signal</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
           </layout>
           <zorder>mode_gradient</zorder>
           <zorder>mode_interval</zorder>
+          <zorder>invertSignalCheckbox</zorder>
          </widget>
         </item>
         <item>
          <widget class="QGroupBox" name="gradientSettings_group">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
           <property name="styleSheet">
            <string notr="true"> QGroupBox {
      border: 2px solid gray;
@@ -133,7 +147,10 @@ p, li { white-space: pre-wrap; }
  }</string>
           </property>
           <property name="title">
-           <string>Gradient settings</string>
+           <string>Integrate the data automatically</string>
+          </property>
+          <property name="checkable">
+           <bool>true</bool>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_6">
            <item>
@@ -148,7 +165,7 @@ p, li { white-space: pre-wrap; }
              <item>
               <widget class="QLineEdit" name="gradientSettings_integrate">
                <property name="text">
-                <string>1</string>
+                <string>30</string>
                </property>
               </widget>
              </item>
@@ -183,14 +200,14 @@ p, li { white-space: pre-wrap; }
              <item>
               <widget class="QLabel" name="_every">
                <property name="text">
-                <string>every [s]</string>
+                <string>every [samples]</string>
                </property>
               </widget>
              </item>
              <item>
               <widget class="QLineEdit" name="preview_repeatInterval">
                <property name="text">
-                <string>2.0</string>
+                <string>4</string>
                </property>
               </widget>
              </item>
@@ -266,6 +283,27 @@ p, li { white-space: pre-wrap; }
          </widget>
         </item>
         <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="connectionStatus">
+            <property name="text">
+             <string>Not connected</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="reconnectButton">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="text">
+             <string>Reconnect</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
          <spacer name="verticalSpacer">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -304,6 +342,7 @@ p, li { white-space: pre-wrap; }
      <string>Data</string>
     </property>
     <addaction name="actionSave_displayed"/>
+    <addaction name="actionOpen_and_continue"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuData"/>
@@ -317,6 +356,11 @@ p, li { white-space: pre-wrap; }
   <action name="actionSave_displayed">
    <property name="text">
     <string>Save displayed...</string>
+   </property>
+  </action>
+  <action name="actionOpen_and_continue">
+   <property name="text">
+    <string>Open and continue...</string>
    </property>
   </action>
  </widget>
