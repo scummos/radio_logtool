@@ -66,7 +66,7 @@ class DelayedFileWriter():
     def maybeWriteData(self, force = False):
         if len(self.data) >= self.accum or force:
             with open(self.file, 'a') as fileptr:
-                fileptr.write('\n'.join([str(item) for item in self.data]))
+                fileptr.write('\n'.join([str(item) for item in self.data]) + "\n")
                 self.data = []
     
     def __del__(self):
@@ -77,7 +77,7 @@ class Recorder(QThread):
     dataAvailable = pyqtSignal()
     connectionStatusChanged = pyqtSignal(bool)
     connectionError = pyqtSignal(str)
-    operationMode = ("16bit", "2x")
+    operationMode = ("16bit", "1x")
     
     def __init__(self, length):
         super(Recorder, self).__init__()
@@ -209,7 +209,7 @@ class mainwin(QMainWindow):
         self.integratedData = []
         for i in xrange(0, len(self.data), chunkSize):
             chunk = self.data[i:i+chunkSize]
-            self.integratedData.append(sum(chunk) / chunkSize)
+            self.integratedData.append(sum(chunk) / float(chunkSize))
     
     def saveAllData(self):
         f = KFileDialog.getSaveFileName()
@@ -300,10 +300,17 @@ class mainwin(QMainWindow):
         self.verifyDataSaved()
         self.dataAccessMutex.lock()
         self.data = []
+        self.integratedData = []
+        self.integratedRealIndex = 0
+        self.currentIntegratedIndex = 0
+        self.dataAwaitingIntegration = []
         self.currentDataIndex = 0
+        self.rawDataFileWriter = None
         self.previousChunk = False
         if hasattr(self, "plotobject"):
             self.plotobject.clearPoints()
+        if hasattr(self, "integratePlotObject"):
+            self.integratePlotObject.clearPoints()
         self.dataAccessMutex.unlock()
     
     def toggleAutoUpdate(self):
