@@ -16,7 +16,9 @@ from PyKDE4.kio import KFile, KFileDialog
 from PyKDE4.kdeui import KPlotWidget, KPlotObject, KMessageBox
 from PyKDE4 import kdecore
 
-from i2c import mcp3426Client as connection
+from i2c import mcp3426Client as connection, ds1629Client as temperatureConnection
+
+from collections import namedtuple
 
 samplesPerSecond = 15
 
@@ -50,6 +52,12 @@ def appendArrayToDatafile(data, filename):
         for item in data:
             fileptr.write(str(item) + "\n")
 
+DataTuple = namedtuple('DataTuple', ['recordingTime', 'data', 'temperature'])
+
+class PrintableDataTuple(DataTuple):
+    def __str__(self):
+        return ' '.join([str(item) for item in self])
+
 class DelayedFileWriter():
     def __init__(self, file, accum = 480):
         self.data = []
@@ -57,7 +65,7 @@ class DelayedFileWriter():
         self.file = file
         
     def write(self, data):
-        self.data.extend(data)
+        self.data.append(data)
         self.maybeWriteData()
     
     def doWriteData(self):
@@ -84,18 +92,32 @@ class Recorder(QThread):
         self.dataAccessMutex = QMutex()
         self.data = []
         self.client = connection()
+        self.temperatureClient = temperatureConnection()
         self.length = length
+        self.tempeatureUpdateRequested = False
+    
+    def requestTemperatureUpdate(self):
+        self.tempeatureUpdateRequested = True
     
     def doConnect(self):
+        connectionEstablished = False
         try:
             self.client.openDevice()
             self.client.setOperationMode(*self.operationMode)
             self.connectionStatusChanged.emit(True)
-            return True
+            connectionEstablished = True
         except Exception as e:
             self.connectionError.emit(str(e))
             self.connectionStatusChanged.emit(False)
-            return False
+        try:
+            self.temperatureClient.openDevice()
+            print "Temperature client initialized successfully."
+        except Exception as e:
+            self.temperatureClient = None
+            print "Temperature client is unavailable."
+        finally:
+            self.client.activate()
+        return connectionEstablished
     
     def reconnect(self):
         if self.client.isInitialized():
@@ -117,21 +139,35 @@ class Recorder(QThread):
         self.cleanup()
         del self.client
     
+    def doReadTemperature(self):
+        # Switch between the i2c clients attached to the board
+        if self.temperatureClient is not None:
+            self.temperatureClient.activate()
+            temperature = self.temperatureClient.readBlock()
+            self.client.activate()
+            return temperature
+        return None
+    
     def run(self):
-        """Record a chunk of "length" samples, and return it as int array"""
+        """Record a chunk of "length" samples, and return it as int array
+        Currently length is always 1, but might become relevant for performance later...
+        theoretically."""
         self.stop = False
+        currentTemperature = None
         while not self.stop:
             #print "Recording block of length", length
-            newData = []
-            for i in xrange(self.length):
-                try:
-                    newData.append(self.client.readBlock())
-                except IOError as e:
-                    self.connectionStatusChanged.emit(False)
-                    self.connectionError.emit(str(e))
-                    return
+            try:
+                newData = self.client.readBlock()
+            except IOError as e:
+                self.connectionStatusChanged.emit(False)
+                self.connectionError.emit(str(e))
+                return
+            if self.tempeatureUpdateRequested:
+                self.tempeatureUpdateRequested = False
+                currentTemperature = self.doReadTemperature()
+            
             self.dataAccessMutex.lock()
-            self.data.append(newData) # 1*2 = sizeof(short)
+            self.data.append(PrintableDataTuple("%f" % time(), newData, currentTemperature))
             self.dataAccessMutex.unlock()
             self.dataAvailable.emit()
         self.finalize()
@@ -191,6 +227,14 @@ class mainwin(QMainWindow):
         self.dataAwaitingIntegration = []
         self.invertDataToggled()
         self.ui.invertSignalCheckbox.clicked.connect(self.invertDataToggled)
+        
+        self.temperatureUpdateTimer = QTimer()
+        self.temperatureUpdateTimer.setInterval(1000)
+        self.temperatureUpdateTimer.setSingleShot(False)
+        self.temperatureUpdateTimer.timeout.connect(self.recorderThread.requestTemperatureUpdate)
+        self.temperatureUpdateTimer.start()
+        
+        self.rawDataBackupCopy = []
     
     def invertDataToggled(self):
         self.invertData = self.ui.invertSignalCheckbox.isChecked()
@@ -214,7 +258,7 @@ class mainwin(QMainWindow):
     def saveAllData(self):
         f = KFileDialog.getSaveFileName()
         try:
-            writeArrayToDatafile(self.data, f)
+            writeArrayToDatafile(self.rawDataBackupCopy, f)
             self.ui.statusbar.message("Successfully saved %s values to %s." % (str(len(self.data)), f))
         except Exception as e:
             self.ui.statusbar.message("Failed to save data to %s: %s" % (f, str(e)))
@@ -261,11 +305,10 @@ class mainwin(QMainWindow):
             self.integratePlotObject.addPoint(self.integratedRealIndex, point)
             self.currentIntegratedIndex += 1
     
-    def addDataPoints(self, points):
-        for point in points:
-            self.realIndex = self.indexToTime(self.currentDataIndex)
-            self.plotobject.addPoint(self.realIndex, point)
-            self.currentDataIndex += 1
+    def addDataPoint(self, point):
+        self.realIndex = self.indexToTime(self.currentDataIndex)
+        self.plotobject.addPoint(self.realIndex, point)
+        self.currentDataIndex += 1
     
     def openDataFile(self):
         self.verifyDataSaved()
@@ -276,7 +319,7 @@ class mainwin(QMainWindow):
         try:
             with open(f) as fileptr:
                 data = fileptr.readlines()
-                self.data = [float(item) for item in data]
+                self.data = [float(item.split('\t')[1]) for item in data]
             if len(self.data) == 0:
                 raise IOError("No valid data points found, probably the file is empty")
             self.ui.record_url.setText('/'.join(s[:-1]))
@@ -292,7 +335,7 @@ class mainwin(QMainWindow):
                 self.ui.statusbar.message("Could not load file %s: invalid characters" % f)
         finally:
             if len(self.data) > 0:
-                self.addDataPoints(self.data)
+                self.addDataPoint(self.data)
             self.redrawPlot()
             self.dataAccessMutex.unlock()
     
@@ -362,9 +405,12 @@ class mainwin(QMainWindow):
     
     def handleQueuedData(self):
         self.dataAccessMutex.lock()
-        data = self.dataQueue
+        rawData = self.dataQueue
         if self.invertData:
-            data = [-item for item in data]
+            data = -rawData.data
+        else:
+            data = rawData.data
+        temperature = rawData.temperature
         targetPath = self.cachedTargetPath
         save = self.recordingState
         if save:
@@ -375,15 +421,12 @@ class mainwin(QMainWindow):
                 self.ui.statusbar.message("Invalid save file path, not saving data!")
                 save = False
         try:
-            if not checkData(data):
-                print "Data seems corrupted. skipping"
-                return  
             if save:
                 if self.rawDataFileWriter is None:
                     self.rawDataFileWriter = DelayedFileWriter(filenameForChunk)
-                self.rawDataFileWriter.write(data)
+                self.rawDataFileWriter.write(rawData)
                 time = datetime.now().strftime("%H:%M:%S")
-                self.ui.statusbar.message("%s: (delayed) wrote %s new values to datafile \"%s\"" % (time, len((data)), filenameForChunk))
+                self.ui.statusbar.message("%s: (delayed) wrote a new value to datafile \"%s\"" % (time, filenameForChunk))
         except OverflowError:
             print "!! overflow while processing data, not saving"
             data = False
@@ -391,17 +434,18 @@ class mainwin(QMainWindow):
             self.dataAccessMutex.unlock()
         if data:
             self.previousChunk = data
-            self.dataAwaitingIntegration.extend(data)
+            self.dataAwaitingIntegration.append(data)
             integratedPointsAdded = self.maybeDoIntegration()
             self.dataAccessMutex.lock()
-            self.data.extend(data)
+            self.data.append(data)
+            self.rawDataBackupCopy.append(rawData)
             self.dataAccessMutex.unlock()
             
             created = False
             if not self.plotobject:
                 created = True
                 self.plotobject = KPlotObject(QColor(0, 190, 255), KPlotObject.Lines, 1.0)
-            self.addDataPoints(data)
+            self.addDataPoint(data)
             if created:
                 self.ui.plot_sum.addPlotObject(self.plotobject)
             
@@ -417,7 +461,7 @@ class mainwin(QMainWindow):
             if created:
                 self.ui.plot_sum.addPlotObject(self.integratePlotObject)
             
-            if (self.currentDataIndex / len(data)) % self.updateInterval == 0 and self.autoUpdate:
+            if (self.currentDataIndex) % self.updateInterval == 0 and self.autoUpdate:
                 self.redrawPlot()
             
     

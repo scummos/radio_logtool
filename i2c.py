@@ -41,6 +41,10 @@ class i2cConnection():
         if not os.path.exists(self.deviceUrl) or not os.access(self.deviceUrl, os.W_OK):
             raise IOError("Failed to get write-access to device file.")
         self.deviceFile = open(self.deviceUrl, "r+b", 0)
+        self.activate()
+    
+    def activate(self):
+        assert self.deviceFile
         if fcntl.ioctl(self.deviceFile, 0x0703, self.clientAddress) < 0:
             raise IOError("ioctl failed");
 
@@ -88,6 +92,7 @@ class ds1629Client(i2cConnection):
     clientAddress = 0x4f
     
     def __init__(self):
+        i2cConnection.__init__(self)
         high = (125.0, self.toInt(chr(0x7D)+chr(0x00)))
         low = (-55.0, self.toInt(chr(0xC9)+chr(0x00)))
         self.inputRange = high[1] - low[1]
@@ -104,16 +109,15 @@ class ds1629Client(i2cConnection):
         return round(item * self.conversionFactor, 2)
     
     def beginReadData(self):
-        self.deviceFile.write(chr(0xEE))
         while True:
-            self.deviceFile.write(chr(0xAA))
-            print hex(stringToDecimal(self.deviceFile.read(2)))
+            print self.readBlock()
+            sleep(1)
     
     def readBlock(self):
         self.deviceFile.write(chr(0xEE))
         self.deviceFile.write(chr(0xAA))
         data = self.deviceFile.read(2)
-        return self.intToCelsius(self.toInt(data)), hex(self.toInt(data))
+        return self.intToCelsius(self.toInt(data))
         
 
 class mcp3426Client(i2cConnection):
@@ -146,7 +150,7 @@ def scanForClients():
 def ds1629Main():
     connection = ds1629Client()
     connection.openDevice()
-    print connection.readBlock()
+    connection.beginReadData()
 
 def mcp3426Main():
     connection = mcp3426Client()
