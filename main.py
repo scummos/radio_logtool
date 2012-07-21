@@ -97,7 +97,8 @@ class Recorder(QThread):
         self.tempeatureUpdateRequested = False
     
     def requestTemperatureUpdate(self):
-        self.tempeatureUpdateRequested = True
+        if self.temperatureClient:
+            self.tempeatureUpdateRequested = True
     
     def doConnect(self):
         connectionEstablished = False
@@ -109,12 +110,14 @@ class Recorder(QThread):
         except Exception as e:
             self.connectionError.emit(str(e))
             self.connectionStatusChanged.emit(False)
+            return connectionEstablished
         try:
             self.temperatureClient.openDevice()
+            self.doReadTemperature()
             print "Temperature client initialized successfully."
         except Exception as e:
             self.temperatureClient = None
-            print "Temperature client is unavailable."
+            print "Temperature client is unavailable: %s." % e
         finally:
             self.client.activate()
         return connectionEstablished
@@ -158,13 +161,13 @@ class Recorder(QThread):
             #print "Recording block of length", length
             try:
                 newData = self.client.readBlock()
+                if self.tempeatureUpdateRequested:
+                    self.tempeatureUpdateRequested = False
+                    currentTemperature = self.doReadTemperature()
             except IOError as e:
                 self.connectionStatusChanged.emit(False)
                 self.connectionError.emit(str(e))
                 return
-            if self.tempeatureUpdateRequested:
-                self.tempeatureUpdateRequested = False
-                currentTemperature = self.doReadTemperature()
             
             self.dataAccessMutex.lock()
             self.data.append(PrintableDataTuple("%f" % time(), newData, currentTemperature))

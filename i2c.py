@@ -24,7 +24,11 @@ def detectI2CTinyUSB():
         raise IOError("Could not detect any i2c-tiny-usb devices! Make sure the device is plugged in.")
 
 def stringToDecimal(raw_data):
-    return ord(raw_data[0])*256 + ord(raw_data[1])
+    result = ord(raw_data[0])*256 + ord(raw_data[1])
+    # the idiot way to handle the parity bit
+    if result > 2**15:
+        result -= 2**16
+    return result
 
 class i2cConnection():
     def __init__(self):
@@ -74,6 +78,7 @@ class i2cConnection():
                     if ord(raw_data[2]) & 128:
                         # no new data ready to be read
                         continue
+                    #print [bin(ord(item)) for item in raw_data]
                     subsequentErrors = 0
                 except IOError:
                     log("I/O error occured while reading data, trying to recover")
@@ -123,6 +128,15 @@ class ds1629Client(i2cConnection):
 class mcp3426Client(i2cConnection):
     clientAddress = 0x68
     
+    def readBlock(self):
+        while True:
+            raw_data = self.deviceFile.read(3)
+            if ord(raw_data[2]) & 128:
+                # no new data ready to be read
+                continue
+            decimal = stringToDecimal(raw_data)
+            return decimal
+    
     def setOperationMode(self, rate = "16bit", gain = "1x"):
         rates = {"16bit": 0b10, "14bit": 0b01, "12bit": 0b00}
         gains = {"1x": 0b00, "2x": 0b01, "4x": 0b10, "8x": 0b11}
@@ -137,6 +151,7 @@ class mcp3426Client(i2cConnection):
         self.deviceFile.write(chr(cmd))
 
 def scanForClients():
+    print "Scanning for connected i2c clients."
     for device in range(0, 0x80):
         c = i2cConnection()
         c.clientAddress = device
@@ -155,8 +170,13 @@ def ds1629Main():
 def mcp3426Main():
     connection = mcp3426Client()
     connection.openDevice()
-    connection.setOperationMode("16bit", "1x")
+    connection.setOperationMode("12bit", "1x")
     connection.beginReadData()
 
 if __name__ == '__main__':
-    ds1629Main()
+    if 'temperature' in sys.argv:
+        ds1629Main()
+    elif 'ad' in sys.argv:
+        mcp3426Main()
+    elif 'list' in sys.argv or len(sys.argv) == 1:
+        scanForClients()
