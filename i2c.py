@@ -49,6 +49,7 @@ class i2cConnection():
     
     def activate(self):
         assert self.deviceFile
+        log("sending ioctl to device")
         if fcntl.ioctl(self.deviceFile, 0x0703, self.clientAddress) < 0:
             raise IOError("ioctl failed");
 

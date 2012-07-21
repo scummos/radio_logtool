@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+
 import sys
 from struct import unpack, pack
 from array import array
@@ -21,6 +24,9 @@ from i2c import mcp3426Client as connection, ds1629Client as temperatureConnecti
 from collections import namedtuple
 
 samplesPerSecond = 15
+
+def rawOutputToVoltage(raw):
+    return 62.5e-6*raw # 16bit resolution equals 62.5 uV per unit
 
 def integrateData(data, samples):
     newData = array('f', [])
@@ -103,8 +109,11 @@ class Recorder(QThread):
     def doConnect(self):
         connectionEstablished = False
         try:
+            print "opening device"
             self.client.openDevice()
+            print "setting operation mode"
             self.client.setOperationMode(*self.operationMode)
+            print "ok!"
             self.connectionStatusChanged.emit(True)
             connectionEstablished = True
         except Exception as e:
@@ -123,6 +132,8 @@ class Recorder(QThread):
         return connectionEstablished
     
     def reconnect(self):
+        print "Reconnecting."
+        self.temperatureClient.openDevice()
         if self.client.isInitialized():
             try:
                 self.client.reinit()
@@ -314,6 +325,8 @@ class mainwin(QMainWindow):
         self.currentDataIndex += 1
     
     def openDataFile(self):
+        print "Sorry, this does not work currently."
+        return
         self.verifyDataSaved()
         f = KFileDialog.getOpenFileName()
         s = str(f).split('/')
@@ -406,6 +419,16 @@ class mainwin(QMainWindow):
             targetPath = url.path() + "/" + self.ui.record_prefix.text()
         return targetPath
     
+    def updateDigitalVoltageDisplay(self, rawVoltage):
+        voltage = rawOutputToVoltage(rawVoltage)
+        self.ui.voltage_value.setText(u"%.02fμV" % (voltage*100)) # theoretically \u2004 is a halfspace but doesn't work
+    
+    def updateDigitalTemperatureDisplay(self, temperature):
+        if temperature:
+            self.ui.temperature_value.setText(u"%s°C" % temperature)
+        # else:
+        # self.ui.temperature_value.setText("-.-")
+    
     def handleQueuedData(self):
         self.dataAccessMutex.lock()
         rawData = self.dataQueue
@@ -414,6 +437,7 @@ class mainwin(QMainWindow):
         else:
             data = rawData.data
         temperature = rawData.temperature
+        self.updateDigitalTemperatureDisplay(temperature)
         targetPath = self.cachedTargetPath
         save = self.recordingState
         if save:
@@ -436,6 +460,7 @@ class mainwin(QMainWindow):
         finally:
             self.dataAccessMutex.unlock()
         if data:
+            self.updateDigitalVoltageDisplay(data)
             self.previousChunk = data
             self.dataAwaitingIntegration.append(data)
             integratedPointsAdded = self.maybeDoIntegration()
