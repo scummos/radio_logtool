@@ -24,6 +24,7 @@ from i2c import mcp3426Client as connection, ds1629Client as temperatureConnecti
 from collections import namedtuple
 
 samplesPerSecond = 15
+expectedAdRange = (0, 2**16-1)
 
 def rawOutputToVoltage(raw):
     return 62.5e-6*raw # 16bit resolution equals 62.5 uV per unit
@@ -238,10 +239,20 @@ class mainwin(QMainWindow):
         self.ui.plot_sum.setAntialiasing(True)
         self.plotobject = None
         self.integratePlotObject = None
+        self.invertDataToggled()
         self.ui.actionOpen_and_continue.activated.connect(self.openDataFile)
+        self.ui.limits_slider_x.valueChanged.connect(self.syncLimitsSlidersToTextfield)
+        self.ui.limits_slider_y.valueChanged.connect(self.syncLimitsSlidersToTextfield)
+        self.ui.limits_slider_x.valueChanged.connect(self.checkLimits_x)
+        self.ui.limits_slider_y.valueChanged.connect(self.checkLimits_y)
+        self.ui.limits_text_x.textChanged.connect(self.syncLimitsTextfieldsToSlider)
+        self.ui.limits_text_y.textChanged.connect(self.syncLimitsTextfieldsToSlider)
+        self.ui.limits_autoFromData.toggled.connect(self.changeLimits)
+        self.ui.limits_autoFromIntegrated.toggled.connect(self.changeLimits)
+        self.ui.limits_manual.toggled.connect(self.changeLimits)
+        self.changeLimits()
         
         self.dataAwaitingIntegration = []
-        self.invertDataToggled()
         self.ui.invertSignalCheckbox.clicked.connect(self.invertDataToggled)
         
         self.temperatureUpdateTimer = QTimer()
@@ -252,8 +263,69 @@ class mainwin(QMainWindow):
         
         self.rawDataBackupCopy = []
     
+    def checkLimits_x(self):
+        if self.ui.limits_slider_x.value() > self.ui.limits_slider_y.value():
+            self.ui.limits_slider_y.setValue(self.ui.limits_slider_x.value()+20)
+    
+    def checkLimits_y(self):
+        if self.ui.limits_slider_y.value() < self.ui.limits_slider_x.value():
+            self.ui.limits_slider_x.setValue(self.ui.limits_slider_y.value()+20)
+    
+    def syncLimitsTextfieldsToSlider(self):
+        syncItems = {
+            self.ui.limits_slider_x : self.ui.limits_text_x,
+            self.ui.limits_slider_y : self.ui.limits_text_y
+        }
+        for slider, textfield in syncItems.iteritems():
+            try:
+                newValue = int(textfield.text())
+            except:
+                continue
+            if slider.value() == newValue:
+                continue
+            slider.setValue(newValue)
+    
+    def syncLimitsSlidersToTextfield(self):
+        syncItems = {
+            self.ui.limits_slider_x : self.ui.limits_text_x,
+            self.ui.limits_slider_y : self.ui.limits_text_y
+        }
+        for slider, textfield in syncItems.iteritems():
+            newValue = str(slider.value())
+            if textfield.text() == newValue:
+                continue
+            textfield.setText(newValue)
+        
+    def changeLimits(self):
+        modes = {
+            self.ui.limits_autoFromData : "autoData",
+            self.ui.limits_autoFromIntegrated : "autoIntegrated",
+            self.ui.limits_manual : "manual"
+        }
+        for elem, mode in modes.iteritems():
+            if elem.isChecked():
+                self.limitsMode = mode
+        print "limits cotntrol mode changed to", self.limitsMode
+        manualControls = [self.ui.limits_slider_x, self.ui.limits_slider_y, self.ui.limits_text_x, self.ui.limits_text_y]
+        for elem in manualControls:
+            if self.limitsMode != "manual":
+                elem.setDisabled(True)
+            else:
+                elem.setDisabled(False)
+        
+        if self.invertData:
+            sliderRange = (-expectedAdRange[1]-20, expectedAdRange[0]+20)
+        else:
+            sliderRange = (expectedAdRange[0]-20, expectedAdRange[1]+20)
+        self.ui.limits_slider_x.setRange(*sliderRange)
+        self.ui.limits_slider_y.setRange(*sliderRange)
+        if self.limitsMode == "manual" and hasattr(self, "lastUsedBounds"):
+            self.ui.limits_slider_x.setValue(self.lastUsedBounds[2])
+            self.ui.limits_slider_y.setValue(self.lastUsedBounds[3])
+    
     def invertDataToggled(self):
         self.invertData = self.ui.invertSignalCheckbox.isChecked()
+        self.changeLimits()
     
     def verifyDataSaved(self):
         if self.rawDataFileWriter is not None:
@@ -517,8 +589,14 @@ class mainwin(QMainWindow):
     
     def redrawPlot(self):
         if len(self.data) > 0:
-            bounds = (0, self.realIndex*1.05, min(self.data), max(self.data))
+            if self.limitsMode == "autoIntegrated" and len(self.integratedData) > 0:
+                bounds = (0, self.realIndex*1.05, min(self.integratedData)-20, max(self.integratedData)+20)
+            elif self.limitsMode == "autoData":
+                bounds = (0, self.realIndex*1.05, min(self.data)-20, max(self.data)+20)
+            else:
+                bounds = (0, self.realIndex*1.05, int(self.ui.limits_text_x.text()), int(self.ui.limits_text_y.text()))
             self.ui.plot_sum.setLimits(*bounds)
+            self.lastUsedBounds = bounds
         self.ui.plot_sum.update()
     
     def handleRecordFinished(self):

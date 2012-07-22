@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>853</width>
-    <height>714</height>
+    <width>880</width>
+    <height>804</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -63,7 +63,8 @@
           </property>
           <property name="styleSheet">
            <string notr="true"> QGroupBox {
-     border: 2px solid gray;
+     border-top: 1px solid black;
+     border-bottom: 1px solid black;
      margin-top: 1ex;
  }
 
@@ -139,7 +140,8 @@ p, li { white-space: pre-wrap; }
           </property>
           <property name="styleSheet">
            <string notr="true"> QGroupBox {
-     border: 2px solid gray;
+     border-top: 1px solid black;
+     border-bottom: 1px solid black;
      margin-top: 1ex;
  }
 
@@ -178,10 +180,144 @@ p, li { white-space: pre-wrap; }
          </widget>
         </item>
         <item>
+         <widget class="QGroupBox" name="limits_box">
+          <property name="styleSheet">
+           <string notr="true"> QGroupBox {
+     border-top: 1px solid black;
+     border-bottom: 1px solid black;
+     margin-top: 1ex;
+ }
+
+ QGroupBox::title {
+     subcontrol-origin: margin;
+     subcontrol-position: top center;
+     padding: 0 3px;
+ }</string>
+          </property>
+          <property name="title">
+           <string>Diagram limits</string>
+          </property>
+          <property name="checkable">
+           <bool>false</bool>
+          </property>
+          <layout class="QGridLayout" name="gridLayout">
+           <item row="3" column="0">
+            <widget class="QLabel" name="limits_label_x">
+             <property name="text">
+              <string>min</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QRadioButton" name="limits_autoFromIntegrated">
+             <property name="text">
+              <string>Auto: from integrated data</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="1">
+            <widget class="QSlider" name="limits_slider_x">
+             <property name="singleStep">
+              <number>100</number>
+             </property>
+             <property name="pageStep">
+              <number>5000</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="invertedAppearance">
+              <bool>false</bool>
+             </property>
+             <property name="invertedControls">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QSlider" name="limits_slider_y">
+             <property name="singleStep">
+              <number>100</number>
+             </property>
+             <property name="pageStep">
+              <number>5000</number>
+             </property>
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="invertedAppearance">
+              <bool>false</bool>
+             </property>
+             <property name="invertedControls">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QRadioButton" name="limits_autoFromData">
+             <property name="text">
+              <string>Auto: from data</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QLabel" name="limits_label_y">
+             <property name="text">
+              <string>max</string>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="2">
+            <widget class="QLineEdit" name="limits_text_y">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>60</width>
+               <height>60</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>0</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="2">
+            <widget class="QLineEdit" name="limits_text_x">
+             <property name="maximumSize">
+              <size>
+               <width>60</width>
+               <height>60</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>0</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QRadioButton" name="limits_manual">
+             <property name="text">
+              <string>Manual</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
          <widget class="QGroupBox" name="preview_group">
           <property name="styleSheet">
            <string notr="true"> QGroupBox {
-     border: 2px solid gray;
+     border-top: 1px solid black;
+     border-bottom: 1px solid black;
      margin-top: 1ex;
  }
 
@@ -230,7 +366,8 @@ p, li { white-space: pre-wrap; }
          <widget class="QGroupBox" name="record_group">
           <property name="styleSheet">
            <string notr="true"> QGroupBox {
-     border: 2px solid gray;
+     border-top: 1px solid black;
+     border-bottom: 1px solid black;
      margin-top: 1ex;
  }
 
@@ -397,7 +534,7 @@ background-color:black;</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>853</width>
+     <width>880</width>
      <height>22</height>
     </rect>
    </property>
