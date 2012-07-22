@@ -210,6 +210,8 @@ class mainwin(QMainWindow):
         self.mode = None
         self.dataAccessMutex = QMutex()
         self.dataQueue = False
+        self.newIntegrationInterval = None
+        self.updateIntegrationInterval()
         self.startRecording()
         self.updatePreviewIntervals()
         self.ui.preview_repeatInterval.textChanged.connect(self.updatePreviewIntervals)
@@ -259,7 +261,6 @@ class mainwin(QMainWindow):
     
     def changeIntegrationMode(self):
         self.doIntegration = self.ui.gradientSettings_group.isChecked()
-        self.integrationInterval = verify(self.ui.gradientSettings_integrate.text().toInt(), 30, "integration interval", self)
         self.recalculateIntegratedData()
     
     def recalculateIntegratedData(self):
@@ -285,8 +286,10 @@ class mainwin(QMainWindow):
         self.verifyDataSaved()
     
     def updateIntegrationInterval(self):
-        self.integrationInterval = verify(self.ui.gradientSettings_integrate.text().toInt(), 1, "integration interval", self)
-        self.integrationInterval = max([self.integrationInterval, 0.04]) # more than 25 updates per second don't make sense
+        self.newIntegrationInterval = verify(self.ui.gradientSettings_integrate.text().toInt(), 1, "integration interval", self)
+        self.newIntegrationInterval = max([self.newIntegrationInterval, 0.04]) # more than 25 updates per second don't make sense
+        if not hasattr(self, "integrationInterval"):
+            self.integrationInterval = self.newIntegrationInterval
     
     def updatePreviewIntervals(self):
         self.updateInterval = verify(self.ui.preview_repeatInterval.text().toInt(), 4, "preview interval", self)
@@ -315,7 +318,8 @@ class mainwin(QMainWindow):
     
     def addIntegratedPoints(self, points):
         for point in points:
-            self.integratedRealIndex = self.indexToTime(self.currentIntegratedIndex) * self.integrationInterval
+            self.integratedRealIndex = self.indexToTime(self.currentIntegratedIndex * self.integrationInterval)
+            #print "adding point with time", self.integratedRealIndex, self.integrationInterval, self.newIntegrationInterval
             self.integratePlotObject.addPoint(self.integratedRealIndex, point)
             self.currentIntegratedIndex += 1
     
@@ -421,7 +425,10 @@ class mainwin(QMainWindow):
     
     def updateDigitalVoltageDisplay(self, rawVoltage):
         voltage = rawOutputToVoltage(rawVoltage)
-        self.ui.voltage_value.setText(u"%.02fμV" % (voltage*100)) # theoretically \u2004 is a halfspace but doesn't work
+        self.ui.voltage_value.setText(u"%.02fmV" % (voltage*1000)) # theoreticallyμ \u2004 is a halfspace but doesn't work
+        if len(self.integratedData):
+            self.ui.voltage_mean_label.setText(u"Mean (%s samples): <b>%.02fmV</b>" 
+                    % ( self.integrationInterval, rawOutputToVoltage(self.integratedData[-1]*1000) ))
     
     def updateDigitalTemperatureDisplay(self, temperature):
         if temperature:
@@ -456,10 +463,10 @@ class mainwin(QMainWindow):
                 self.ui.statusbar.message("%s: (delayed) wrote a new value to datafile \"%s\"" % (time, filenameForChunk))
         except OverflowError:
             print "!! overflow while processing data, not saving"
-            data = False
+            data = None
         finally:
             self.dataAccessMutex.unlock()
-        if data:
+        if data is not None:
             self.updateDigitalVoltageDisplay(data)
             self.previousChunk = data
             self.dataAwaitingIntegration.append(data)
@@ -484,7 +491,7 @@ class mainwin(QMainWindow):
                 self.integratePlotObject = KPlotObject(QColor(0, 0, 0), KPlotObject.Lines, 1.0)
                 p = QPen(QColor(200, 200, 255))
                 p.setWidth(2.5)
-                self.integratePlotObject.setLinePen(p);
+                self.integratePlotObject.setLinePen(p)
             self.addIntegratedPoints(integratedPointsAdded)
             if created:
                 self.ui.plot_sum.addPlotObject(self.integratePlotObject)
@@ -492,7 +499,13 @@ class mainwin(QMainWindow):
             if (self.currentDataIndex) % self.updateInterval == 0 and self.autoUpdate:
                 self.redrawPlot()
             
-    
+            if self.newIntegrationInterval is not None:
+                if len(self.dataAwaitingIntegration) == 0:
+                    print "updating integration interval to", self.newIntegrationInterval
+                    self.integrationInterval = self.newIntegrationInterval
+                    self.newIntegrationInterval = None
+                    self.currentIntegratedIndex = self.currentDataIndex / self.integrationInterval + 1
+        
     def maybeDoIntegration(self):
         pointsAdded = []
         while len(self.dataAwaitingIntegration) >= self.integrationInterval:

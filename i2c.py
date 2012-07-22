@@ -171,7 +171,7 @@ def ds1629Main():
 def mcp3426Main():
     connection = mcp3426Client()
     connection.openDevice()
-    connection.setOperationMode("12bit", "1x")
+    connection.setOperationMode("16bit", "1x")
     connection.beginReadData()
 
 if __name__ == '__main__':
