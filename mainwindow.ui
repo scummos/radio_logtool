@@ -218,7 +218,7 @@ p, li { white-space: pre-wrap; }
            <item row="3" column="1">
             <widget class="QSlider" name="limits_slider_x">
              <property name="singleStep">
-              <number>100</number>
+              <number>10</number>
              </property>
              <property name="pageStep">
               <number>5000</number>
@@ -237,7 +237,7 @@ p, li { white-space: pre-wrap; }
            <item row="4" column="1">
             <widget class="QSlider" name="limits_slider_y">
              <property name="singleStep">
-              <number>100</number>
+              <number>10</number>
              </property>
              <property name="pageStep">
               <number>5000</number>

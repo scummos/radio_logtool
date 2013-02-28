@@ -171,6 +171,7 @@ class Recorder(QThread):
         currentTemperature = None
         while not self.stop:
             #print "Recording block of length", length
+            self.client.setOperationMode(*self.operationMode)
             try:
                 newData = self.client.readBlock()
                 if self.tempeatureUpdateRequested:
@@ -284,6 +285,7 @@ class mainwin(QMainWindow):
             if slider.value() == newValue:
                 continue
             slider.setValue(newValue)
+        self.redrawPlot()
     
     def syncLimitsSlidersToTextfield(self):
         syncItems = {
@@ -295,6 +297,7 @@ class mainwin(QMainWindow):
             if textfield.text() == newValue:
                 continue
             textfield.setText(newValue)
+        self.redrawPlot()
         
     def changeLimits(self):
         modes = {
@@ -320,8 +323,13 @@ class mainwin(QMainWindow):
         self.ui.limits_slider_x.setRange(*sliderRange)
         self.ui.limits_slider_y.setRange(*sliderRange)
         if self.limitsMode == "manual" and hasattr(self, "lastUsedBounds"):
-            self.ui.limits_slider_x.setValue(self.lastUsedBounds[2])
-            self.ui.limits_slider_y.setValue(self.lastUsedBounds[3])
+            print self.lastUsedBounds
+            lastBounds = self.lastUsedBounds
+            self.ui.limits_slider_x.setValue(sliderRange[0])
+            self.ui.limits_slider_y.setValue(sliderRange[1])
+            self.ui.limits_slider_x.setValue(lastBounds[2])
+            self.ui.limits_slider_y.setValue(lastBounds[3])
+        self.redrawPlot()
     
     def invertDataToggled(self):
         self.invertData = self.ui.invertSignalCheckbox.isChecked()
@@ -359,7 +367,8 @@ class mainwin(QMainWindow):
     
     def updateIntegrationInterval(self):
         self.newIntegrationInterval = verify(self.ui.gradientSettings_integrate.text().toInt(), 1, "integration interval", self)
-        self.newIntegrationInterval = max([self.newIntegrationInterval, 0.04]) # more than 25 updates per second don't make sense
+        # more than 25 updates per second don't make sense
+        self.newIntegrationInterval = max([self.newIntegrationInterval, 0.04])
         if not hasattr(self, "integrationInterval"):
             self.integrationInterval = self.newIntegrationInterval
     
@@ -521,7 +530,7 @@ class mainwin(QMainWindow):
         save = self.recordingState
         if save:
             if targetPath:
-                filenameForChunk = targetPath + "result"
+                filenameForChunk = targetPath
                 self.chunkIndex += 1
             else:
                 self.ui.statusbar.message("Invalid save file path, not saving data!")
